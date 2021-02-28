@@ -33,11 +33,15 @@ simulazione$beta0=sapply(simulazione_lista, function(x) coef(x)[1])
 simulazione$beta1=sapply(simulazione_lista, function(x) coef(x)[2])
 simulazione$beta0_se = sapply(simulazione_lista, function(x) summary(x)$coefficients[,2][1])
 simulazione$beta1_se = sapply(simulazione_lista, function(x) summary(x)$coefficients[,2][2])
-
+simulazione$beta1_p = sapply(simulazione_lista, function(x) summary(x)$coefficients[, 4][2])
 
 simulazione %>% 
   group_by(u_sigma) %>% 
   summarise_at(vars(beta0:beta1_se), mean)
+
+simulazione %>% 
+  group_by(u_sigma) %>% 
+  summarise(beta1_p = mean(beta1_p< 0.05))
 
 beta0 <- simulazione %>% 
   group_by(u_sigma) %>% 
@@ -154,3 +158,15 @@ beta1_se <- simulazione %>%
 
 beta0_se | beta1_se
 ggsave("figures/normale_se.pdf", beta0_se | beta1_se, height = 4, width = 8)
+
+
+beta1_test <- simulazione %>% 
+  group_by(u_sigma) %>% 
+  summarise(beta1_p = mean(beta1_p< 0.05)) %>% 
+  ggplot() + 
+  geom_line(aes(u_sigma, beta1_p)) +
+  theme_minimal() +
+  xlab("Varianza Errore di Misura") +
+  ylab("Potenza") +
+  ggtitle("Potenza del test - Beta 1")
+ggsave("figures/normale_potenza.pdf", beta1_test, height = 4, width = 8)
