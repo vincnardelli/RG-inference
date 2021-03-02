@@ -3,7 +3,7 @@ library(dplyr)
 library(patchwork)
 set.seed(123)
 
-
+#cavallo
 simulazione_normale <- function(n=80, u_sigma=1){
   x=rnorm(n, mean=2, sd=1)
   b0=2
