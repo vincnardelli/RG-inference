@@ -3,36 +3,8 @@ library(dplyr)
 library(patchwork)
 library(quantreg)
 
+simulazione_rq_rc <- function(n = 100, u_sigma = 0.75, tt = .9) {
 
-# primo esempio (solo per chiarire) -----------------------------------------------------------
-n = 1000
-sig=1
-beta0 = 2.1
-beta1 = 2
-set.seed(12345)
-X = runif(n, 0, 4)
-
-#heteroskedastic error
-eps <- X*rnorm(n,sd=sig) 
-Y = beta0 + beta1*X + eps
-
-beta0.90=beta0
-# True slope of the .90 quantile function
-beta1.90 = beta1 + qnorm(.90,sd=sig) 
-beta1.90
-library(quantreg)  
-fit.90 = rq(Y ~ X, tau = .90)
-summary(fit.90)
-
-plot(X,Y)
-abline(lm(Y~X), lwd=2, col="blue")
-abline(rq(Y~X,tau=.9), lwd=2, col="red")
-
-#lapply(seq(0.1, 0.9, by=0.1), function(tt) abline(rq(Y~X, tau=tt)))
-
-
-# errore nella rq ---------------------------------------------------------
-simulazione_rq <- function(n = 100, u_sigma = 0.75, tt=.9) {
   varX = 2
   varU = u_sigma
   varZ = 1
@@ -40,7 +12,7 @@ simulazione_rq <- function(n = 100, u_sigma = 0.75, tt=.9) {
   z = as.matrix(rnorm(n, 5, varZ), ncol = 1) # Measurable variable (without any error)
   u = as.matrix(rnorm(n, 0, varU), ncol = 1) # Measurement error
   w = x + u                                  # Variable measuring X (with error)
-  eps = x[1:n, 1] * rnorm(n, 0, 1)           # Heteroskedastic error
+  eps = x[1:n, 1] * rnorm(n, 0, 1)         # Heteroskedastic error
   
   b0 = 2
   bx = 1
@@ -51,42 +23,34 @@ simulazione_rq <- function(n = 100, u_sigma = 0.75, tt=.9) {
                    z = z,
                    x = x)
   
- # tt = .9
-  modxz = rq(y ~ x + z, data = dat, tau = tt)
-  summary(modxz)
+  #RC-step 1 : we assume "variable" validation dataset (va bene?)
+  size_val = .2
+  ind = sample(nrow(dat), size = n * size_val, replace = F)
   
-  modwz = rq(y ~ w + z, data = dat, tau = tt)
+  #regression on validation dataset X ~ W + Z (relazione lineare)
+  dat.val = dat[ind, ]
+  reg1 = lm(x ~ w + z, data = dat.val)
+  
+  dat.ex = dat[-ind, ]
+  x_hat = coef(reg1)[1] + coef(reg1)[2] * dat.ex$w + coef(reg1)[3] * dat.ex$z
+  dat.ex = cbind(dat.ex, x_hat)
+  
+  #q-regression on non-validation dataset Y ~ Xhat + Z
+  modwz = rq(y ~ x_hat + z, data = dat.ex, tau = tt)
   summary(modwz)
   
 }
 
-
-# true parameters ---------------------------------------------------------
-varX = 2
-varZ = 1
-x = as.matrix(rnorm(n, 3, varX), ncol = 1) # variabile non osservabile
-z = as.matrix(rnorm(n, 5, varZ), ncol = 1) # variabile osservabile senza errore
-
-b0 = 2
-bx = 1
-bz = 3
-
-eps = x[1:n, 1] * rnorm(n, 0, 1)
-y = b0 + bx * x[1:n, 1] + bz * z[1:n, 1] + eps
-dat = data.frame(y = y, z = z)
-
-tt = .9
-modxz = rq(y ~ x + z, data = dat, tau = tt)
-
-# cont'd ------------------------------------------------------------------
-true_coef=modxz$coefficients
+#"true" coefficients can be obtained from the following
+modxz_true = rq(y ~ x + z, data = dat, tau = tt)
+true_coef=modxz_true$coefficients
 
 u_sigma <- seq(0, 5, by=0.2)
 n_sim <- 1:500
 simulazione <- expand.grid(n_sim = n_sim, u_sigma = u_sigma)
 
 simulazione_lista <- lapply(1:nrow(simulazione), 
-                            function(x) simulazione_rq(n=100, u_sigma=simulazione[x, ]$u_sigma , tt=.9))
+                            function(x) simulazione_rq_rc(n=100, u_sigma=simulazione[x, ]$u_sigma,tt=.9))
 
 
 simulazione$beta0=sapply(simulazione_lista, function(x) coef(x)[1])
@@ -107,9 +71,7 @@ beta0 <- simulazione %>%
   theme_minimal() +
   xlab("Variance of Measurement Error") +
   ylab("Beta 0") +
-  ggtitle("Beta 0") +
-  xlim(c(0, 1))+
-  ylim(c(-10,10))
+  ggtitle("Beta 0") 
 
 betaW <- simulazione %>% 
   group_by(u_sigma) %>% 
@@ -125,9 +87,7 @@ betaW <- simulazione %>%
   theme_minimal() +
   xlab("Variance of Measurement Error") +
   ylab("Beta W") +
-  ggtitle("Beta W")+
-  xlim(c(0, 1))+
-  ylim(c(-10,10))
+  ggtitle("Beta W")
 
 betaZ <- simulazione %>% 
   group_by(u_sigma) %>% 
@@ -143,9 +103,12 @@ betaZ <- simulazione %>%
   theme_minimal() +
   xlab("Variance of Measurement Error") +
   ylab("Beta Z") +
-  ggtitle("Beta Z")+
-  xlim(c(0, 1))+
-  ylim(c(-10,10))
+  ggtitle("Beta Z")
 
 
 beta0 | betaW | betaZ
+
+
+
+
+
