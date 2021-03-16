@@ -156,6 +156,7 @@ betaZ <- simulazione %>%
 
 
 beta0 | betaW | betaZ
+ggsave("figures/estim_err.pdf", beta0 | betaW | betaZ, height = 4, width = 14)
 
 
 # plot SE - ---------------------------------------------------
@@ -209,6 +210,7 @@ betaZ_se <- simulazione %>%
 
 
 beta0_se | betaW_se | betaZ_se
+ggsave("figures/SE_err.pdf", beta0_se | betaW_se | betaZ_se, height = 4, width = 14)
 
 
 # errore nelle stime per diversi quantili ---------------------------------
@@ -290,3 +292,4 @@ betaWq <- sim_box %>%
   ggtitle("Beta W")
 
 beta0q | betaWq | betaZq
+ggsave("figures/boxplot_err.pdf", beta0q | betaWq | betaZq, height = 4, width = 14)

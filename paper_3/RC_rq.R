@@ -80,7 +80,6 @@ simulazione$betaW_se = sapply(se, function(x) x$coefficients[,2][2])
 simulazione$betaZ_se = sapply(se, function(x) x$coefficients[,2][3])
 
 x_bound=2
-y_bound=20
 
 beta0 <- simulazione %>% 
   group_by(u_sigma) %>% 
@@ -98,7 +97,7 @@ beta0 <- simulazione %>%
   ylab("Beta 0") +
   ggtitle("Beta 0") +
   xlim(c(0,x_bound))+
-  ylim(c(-y_bound,y_bound))
+  ylim(c(-50,50))
 
 betaW <- simulazione %>% 
   group_by(u_sigma) %>% 
@@ -116,7 +115,7 @@ betaW <- simulazione %>%
   ylab("Beta W") +
   ggtitle("Beta W")+
   xlim(c(0,x_bound))+
-  ylim(c(-10,30))
+  ylim(c(-5,30))
 
 betaZ <- simulazione %>% 
   group_by(u_sigma) %>% 
@@ -134,13 +133,13 @@ betaZ <- simulazione %>%
   ylab("Beta Z") +
   ggtitle("Beta Z")+
   xlim(c(0,x_bound))+
-  ylim(c(-10,20))
+  ylim(c(-5,15))
 
 
 beta0 | betaW | betaZ
+ggsave("figures/estim_RC.pdf", beta0 | betaW | betaZ, height = 4, width = 14)
 
 # plot SE - ---------------------------------------------------
-y_bound=11
 beta0_se <- simulazione %>%
   group_by(u_sigma) %>%
   summarise(beta0_se_mean = mean(beta0_se),
@@ -155,8 +154,8 @@ beta0_se <- simulazione %>%
   xlab("Varianza Errore di Misura") +
   ylab("Beta 0 SE") +
   ggtitle("Beta 0 SE") +
-  xlim(c(0, 1))+
-  ylim(c(-y_bound,y_bound))
+  xlim(c(0, 2))+
+  ylim(c(-10,50))
 
 betaW_se <- simulazione %>%
   group_by(u_sigma) %>%
@@ -172,8 +171,8 @@ betaW_se <- simulazione %>%
   xlab("Varianza Errore di Misura") +
   ylab("Beta W SE") +
   ggtitle("Beta W SE") +
-  xlim(c(0, 1))+
-  ylim(c(-y_bound,y_bound))
+  xlim(c(0, 2))+
+  ylim(c(-5,11))
 
 betaZ_se <- simulazione %>%
   group_by(u_sigma) %>%
@@ -189,11 +188,12 @@ betaZ_se <- simulazione %>%
   xlab("Varianza Errore di Misura") +
   ylab("Beta Z SE") +
   ggtitle("Beta Z SE") +
-  xlim(c(0, 1))+
-  ylim(c(-y_bound,y_bound))
+  xlim(c(0, 2))+
+  ylim(c(-5,5))
 
 
 beta0_se | betaW_se | betaZ_se
+ggsave("figures/SE_RC.pdf", beta0_se | betaW_se | betaZ_se, height = 4, width = 14)
 
 
 # errore per diversi quantili ---------------------------------------------
@@ -274,4 +274,5 @@ betaWq <- sim_box %>%
   ggtitle("Beta W")
 
 beta0q | betaWq | betaZq
-
+ggsave("figures/boxplot_RC.pdf", beta0q | betaWq | betaZq, height = 4, width = 14)
+  
