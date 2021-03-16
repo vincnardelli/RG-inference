@@ -258,7 +258,7 @@ betaZq <- simulazione_2 %>%
   theme_minimal() +
   xlab("Quantiles") +
   ylab(" ")+
-  ggtitle("Beta W")
+  ggtitle("Beta Z")
 
 betaWq <- simulazione_2 %>%  
   group_by(tt) %>%  
