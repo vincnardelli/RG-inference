@@ -38,7 +38,7 @@ simulazione_rq_rc <- function(n = 100, u_sigma = 0.75, tt = .9) {
   #q-regression on non-validation dataset Y ~ Xhat + Z
   modwz = rq(y ~ x_hat + z, data = dat.ex, tau = tt)
   summary(modwz)
-  
+  modwz
 }
 
 #"true" coefficients can be obtained from the following
@@ -72,11 +72,15 @@ simulazione$beta0=sapply(simulazione_lista, function(x) coef(x)[1])
 simulazione$betaW=sapply(simulazione_lista, function(x) coef(x)[2])
 simulazione$betaZ=sapply(simulazione_lista, function(x) coef(x)[3])
 
-# simulazione$beta0_se = sapply(simulazione_lista, function(x) summary(x,se = "boot", bsmethod= "xy",R = 400)$coefficients[,2][1])
-# simulazione$betaW_se = sapply(simulazione_lista, function(x) summary(x,se = "boot", bsmethod= "xy",R = 400)$coefficients[,2][2])
-# simulazione$betaZ_se = sapply(simulazione_lista, function(x) summary(x,se = "boot", bsmethod= "xy",R = 400)$coefficients[,2][3])
+se <- parallel::mclapply(simulazione_lista, function(x) summary(x,se = "boot"),
+                         mc.cores = parallel::detectCores()-3)
 
-x_bound=1
+simulazione$beta0_se = sapply(se, function(x) x$coefficients[,2][1])
+simulazione$betaW_se = sapply(se, function(x) x$coefficients[,2][2])
+simulazione$betaZ_se = sapply(se, function(x) x$coefficients[,2][3])
+
+x_bound=2
+y_bound=20
 
 beta0 <- simulazione %>% 
   group_by(u_sigma) %>% 
@@ -93,7 +97,8 @@ beta0 <- simulazione %>%
   xlab("Variance of Measurement Error") +
   ylab("Beta 0") +
   ggtitle("Beta 0") +
-  xlim(c(0,x_bound))
+  xlim(c(0,x_bound))+
+  ylim(c(-y_bound,y_bound))
 
 betaW <- simulazione %>% 
   group_by(u_sigma) %>% 
@@ -111,7 +116,7 @@ betaW <- simulazione %>%
   ylab("Beta W") +
   ggtitle("Beta W")+
   xlim(c(0,x_bound))+
-  ylim(c(-10,10))
+  ylim(c(-10,30))
 
 betaZ <- simulazione %>% 
   group_by(u_sigma) %>% 
@@ -129,46 +134,139 @@ betaZ <- simulazione %>%
   ylab("Beta Z") +
   ggtitle("Beta Z")+
   xlim(c(0,x_bound))+
-  ylim(c(-10,10))
+  ylim(c(-10,20))
 
 
 beta0 | betaW | betaZ
 
+# plot SE - ---------------------------------------------------
+y_bound=11
+beta0_se <- simulazione %>%
+  group_by(u_sigma) %>%
+  summarise(beta0_se_mean = mean(beta0_se),
+            beta0_se_min = min(beta0_se),
+            beta0_se_max = max(beta0_se)) %>%
+  ggplot() +
+  geom_ribbon(aes(x= u_sigma,
+                  ymin = beta0_se_min,
+                  ymax = beta0_se_max), fill="gray80") +
+  geom_line(aes(u_sigma, beta0_se_mean)) +
+  theme_minimal() +
+  xlab("Varianza Errore di Misura") +
+  ylab("Beta 0 SE") +
+  ggtitle("Beta 0 SE") +
+  xlim(c(0, 1))+
+  ylim(c(-y_bound,y_bound))
+
+betaW_se <- simulazione %>%
+  group_by(u_sigma) %>%
+  summarise(betaW_se_mean = mean(betaW_se),
+            betaW_se_min = min(betaW_se),
+            betaW_se_max = max(betaW_se)) %>%
+  ggplot() +
+  geom_ribbon(aes(x= u_sigma,
+                  ymin = betaW_se_min,
+                  ymax = betaW_se_max), fill="gray80") +
+  geom_line(aes(u_sigma, betaW_se_mean)) +
+  theme_minimal() +
+  xlab("Varianza Errore di Misura") +
+  ylab("Beta W SE") +
+  ggtitle("Beta W SE") +
+  xlim(c(0, 1))+
+  ylim(c(-y_bound,y_bound))
+
+betaZ_se <- simulazione %>%
+  group_by(u_sigma) %>%
+  summarise(betaZ_se_mean = mean(betaZ_se),
+            betaZ_se_min = min(betaZ_se),
+            betaZ_se_max = max(betaZ_se)) %>%
+  ggplot() +
+  geom_ribbon(aes(x= u_sigma,
+                  ymin = betaZ_se_min,
+                  ymax = betaZ_se_max), fill="gray80") +
+  geom_line(aes(u_sigma, betaZ_se_mean)) +
+  theme_minimal() +
+  xlab("Varianza Errore di Misura") +
+  ylab("Beta Z SE") +
+  ggtitle("Beta Z SE") +
+  xlim(c(0, 1))+
+  ylim(c(-y_bound,y_bound))
+
+
+beta0_se | betaW_se | betaZ_se
+
+
+# errore per diversi quantili ---------------------------------------------
+true_par=NULL
+tt = seq(0.1,0.9,0.1)
+
+set.seed(123)
+varX = 2
+varZ = 1
+n=100
+x = as.matrix(rnorm(n, 3, varX), ncol = 1) # variabile non osservabile
+z = as.matrix(rnorm(n, 5, varZ), ncol = 1) # variabile osservabile senza errore
+b0 = 2
+bx = 1
+bz = 3
+eps = x[1:n, 1] * rnorm(n, 0, 1)
+y = b0 + bx * x[1:n, 1] + bz * z[1:n, 1] + eps
+dat = data.frame(y = y, z = z)
+for(i in 1:length(tt)){
+  
+  modxz = rq(y ~ x + z, data = dat, tau = tt[i])
+  coef=rep(1,500) %*% t.default(modxz$coefficients)
+  true_par=rbind(true_par,coef)
+}
+
+colnames(true_par)=c("beta0_true","betaX_true","betaZ_true")
 
 u_sigma <- 1
 n_sim <- 1:500
 tt = seq(0.1,0.9,0.1)
 simulazione_2 <- expand.grid(n_sim = n_sim, tt = tt)
 
-simulazione_lista <- lapply(1:nrow(simulazione_2), 
+simulazione_lista2 <- lapply(1:nrow(simulazione_2), 
                             function(x) simulazione_rq_rc(n=100, tt=simulazione_2[x, ]$tt , u_sigma =1))
 
 
-simulazione_2$beta0=sapply(simulazione_lista, function(x) coef(x)[1])
-simulazione_2$betaW=sapply(simulazione_lista, function(x) coef(x)[2])
-simulazione_2$betaZ=sapply(simulazione_lista, function(x) coef(x)[3])
+simulazione_2$beta0=sapply(simulazione_lista2, function(x) coef(x)[1])
+simulazione_2$betaW=sapply(simulazione_lista2, function(x) coef(x)[2])
+simulazione_2$betaZ=sapply(simulazione_lista2, function(x) coef(x)[3])
 
-beta0q <- simulazione_2 %>%  
+simulazione_2=cbind(simulazione_2,true_par)
+
+sim_box = simulazione_2 %>%
+  summarise(
+    tt = tt,
+    bias_beta0 = beta0 - beta0_true,
+    bias_betaW = betaW - betaX_true,
+    bias_betaZ = betaZ - betaZ_true
+  )
+
+
+
+beta0q <- sim_box %>%  
   group_by(tt) %>%  
-  ggplot(aes(x=tt,y=beta0,color=tt,group=tt)) + 
+  ggplot(aes(x=tt,y=bias_beta0,color=tt,group=tt)) + 
   geom_boxplot()+
   theme_minimal() +
   xlab("Quantiles") +
   ylab(" ")+
   ggtitle("Beta 0")
 
-betaZq <- simulazione_2 %>%  
+betaZq <- sim_box %>%  
   group_by(tt) %>%  
-  ggplot(aes(x=tt,y=betaW,color=tt,group=tt)) + 
+  ggplot(aes(x=tt,y=bias_betaW,color=tt,group=tt)) + 
   geom_boxplot()+
   theme_minimal() +
   xlab("Quantiles") +
   ylab(" ")+
   ggtitle("Beta Z")
 
-betaWq <- simulazione_2 %>%  
+betaWq <- sim_box %>%  
   group_by(tt) %>%  
-  ggplot(aes(x=tt,y=betaW,color=tt,group=tt)) + 
+  ggplot(aes(x=tt,y=bias_betaZ,color=tt,group=tt)) + 
   geom_boxplot()+
   theme_minimal() +
   xlab("Quantiles") +
