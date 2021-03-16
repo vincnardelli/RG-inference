@@ -93,12 +93,6 @@ simulazione$beta0=sapply(simulazione_lista, function(x) coef(x)[1])
 simulazione$betaW=sapply(simulazione_lista, function(x) coef(x)[2])
 simulazione$betaZ=sapply(simulazione_lista, function(x) coef(x)[3])
 
-
-#ora funziona ma così è lentissimo perchè faccio il bootstrap più volte
-#simulazione$beta0_se = sapply(simulazione_lista, function(x) summary(x,se = "boot")$coefficients[,2][1])
-#simulazione$betaW_se = sapply(simulazione_lista, function(x) summary(x,se = "boot", bsmethod= "xy",R = 400)$coefficients[,2][2])
-#simulazione$betaZ_se = sapply(simulazione_lista, function(x) summary(x,se = "boot", bsmethod= "xy",R = 400)$coefficients[,2][3])
-
 se <- parallel::mclapply(simulazione_lista, function(x) summary(x,se = "boot"),
                          mc.cores = parallel::detectCores()-1)
 #se <- lapply(simulazione_lista, function(x) summary(x,se = "boot"))    
@@ -164,7 +158,7 @@ betaZ <- simulazione %>%
 beta0 | betaW | betaZ
 
 
-# plot SE - not working ---------------------------------------------------
+# plot SE - ---------------------------------------------------
 beta0_se <- simulazione %>%
   group_by(u_sigma) %>%
   summarise(beta0_se_mean = mean(beta0_se),
@@ -218,21 +212,7 @@ beta0_se | betaW_se | betaZ_se
 
 
 # errore nelle stime per diversi quantili ---------------------------------
-
-u_sigma <- 1
-n_sim <- 1:500
-tt = seq(0.1,0.9,0.1)
-simulazione_2 <- expand.grid(n_sim = n_sim, tt = tt)
-
-simulazione_lista <- lapply(1:nrow(simulazione_2), 
-                            function(x) simulazione_rq(n=100, tt=simulazione_2[x, ]$tt , u_sigma =1))
-
-
-simulazione_2$beta0=sapply(simulazione_lista, function(x) coef(x)[1])
-simulazione_2$betaW=sapply(simulazione_lista, function(x) coef(x)[2])
-simulazione_2$betaZ=sapply(simulazione_lista, function(x) coef(x)[3])
-
-true_par=matrix(0,ncol=length(tt),nrow=3)
+true_par=NULL
 set.seed(123)
 varX = 2
 varZ = 1
@@ -246,35 +226,63 @@ eps = x[1:n, 1] * rnorm(n, 0, 1)
 y = b0 + bx * x[1:n, 1] + bz * z[1:n, 1] + eps
 dat = data.frame(y = y, z = z)
 for(i in 1:length(tt)){
-
+  
   modxz = rq(y ~ x + z, data = dat, tau = tt[i])
-  true_par[,i]=modxz$coefficients
+  coef=rep(1,500) %*% t.default(modxz$coefficients)
+  true_par=rbind(true_par,coef)
 }
+
+colnames(true_par)=c("beta0_true","betaX_true","betaZ_true")
+
+
+u_sigma <- 1
+n_sim <- 1:500
+tt = seq(0.1,0.9,0.1)
+simulazione_2 <- expand.grid(n_sim = n_sim, tt = tt)
+
+simulazione_lista2 <- lapply(1:nrow(simulazione_2), 
+                            function(x) simulazione_rq(n=100, tt=simulazione_2[x, ]$tt , u_sigma =1))
+
+
+simulazione_2$beta0=sapply(simulazione_lista2, function(x) coef(x)[1])
+simulazione_2$betaW=sapply(simulazione_lista2, function(x) coef(x)[2])
+simulazione_2$betaZ=sapply(simulazione_lista2, function(x) coef(x)[3])
+
+simulazione_2=cbind(simulazione_2,true_par)
+
+sim_box = simulazione_2 %>%
+  summarise(
+    tt = tt,
+    bias_beta0 = beta0 - beta0_true,
+    bias_betaW = betaW - betaX_true,
+    bias_betaZ = betaZ - betaZ_true
+  )
+
 
 #boxplot delle simulazioni, sarebbe carino aggiungere ai vari boxplot
 #il valore "reale" del parametro come allocato in true_par
 
-beta0q <- simulazione_2 %>%  
+beta0q <- sim_box %>%  
   group_by(tt) %>%  
-  ggplot(aes(x=tt,y=beta0,color=tt,group=tt)) + 
+  ggplot(aes(x=tt,y=bias_beta0,color=tt,group=tt)) + 
   geom_boxplot()+
   theme_minimal() +
   xlab("Quantiles") +
   ylab(" ")+
   ggtitle("Beta 0")
 
-betaZq <- simulazione_2 %>%  
+betaZq <- sim_box %>%  
   group_by(tt) %>%  
-  ggplot(aes(x=tt,y=betaW,color=tt,group=tt)) + 
+  ggplot(aes(x=tt,y=bias_betaW,color=tt,group=tt)) + 
   geom_boxplot()+
   theme_minimal() +
   xlab("Quantiles") +
   ylab(" ")+
   ggtitle("Beta Z")
 
-betaWq <- simulazione_2 %>%  
+betaWq <- sim_box %>%  
   group_by(tt) %>%  
-  ggplot(aes(x=tt,y=betaW,color=tt,group=tt)) + 
+  ggplot(aes(x=tt,y=bias_betaW,color=tt,group=tt)) + 
   geom_boxplot()+
   theme_minimal() +
   xlab("Quantiles") +
