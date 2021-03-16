@@ -57,7 +57,7 @@ simulazione_rq <- function(n = 100, u_sigma = 0.75, tt=.9) {
   
   modwz = rq(y ~ w + z, data = dat, tau = tt)
   summary(modwz)
-  
+  modwz
 }
 
 #true parameters
@@ -93,10 +93,19 @@ simulazione$beta0=sapply(simulazione_lista, function(x) coef(x)[1])
 simulazione$betaW=sapply(simulazione_lista, function(x) coef(x)[2])
 simulazione$betaZ=sapply(simulazione_lista, function(x) coef(x)[3])
 
-#da rivedere questo pezzo perchè non funziona
-# simulazione$beta0_se = sapply(simulazione_lista, function(x) summary(x,se = "boot")$coefficients[,2][1])
-# simulazione$betaW_se = sapply(simulazione_lista, function(x) summary(x,se = "boot", bsmethod= "xy",R = 400)$coefficients[,2][2])
-# simulazione$betaZ_se = sapply(simulazione_lista, function(x) summary(x,se = "boot", bsmethod= "xy",R = 400)$coefficients[,2][3])
+
+#ora funziona ma così è lentissimo perchè faccio il bootstrap più volte
+#simulazione$beta0_se = sapply(simulazione_lista, function(x) summary(x,se = "boot")$coefficients[,2][1])
+#simulazione$betaW_se = sapply(simulazione_lista, function(x) summary(x,se = "boot", bsmethod= "xy",R = 400)$coefficients[,2][2])
+#simulazione$betaZ_se = sapply(simulazione_lista, function(x) summary(x,se = "boot", bsmethod= "xy",R = 400)$coefficients[,2][3])
+
+se <- parallel::mclapply(simulazione_lista, function(x) summary(x,se = "boot"),
+                         mc.cores = parallel::detectCores()-1)
+#se <- lapply(simulazione_lista, function(x) summary(x,se = "boot"))    
+
+simulazione$beta0_se = sapply(se, function(x) x$coefficients[,2][1])
+simulazione$betaW_se = sapply(se, function(x) x$coefficients[,2][2])
+simulazione$betaZ_se = sapply(se, function(x) x$coefficients[,2][3])
 
 x_bound=3
 
@@ -156,53 +165,56 @@ beta0 | betaW | betaZ
 
 
 # plot SE - not working ---------------------------------------------------
-# beta0_se <- simulazione %>% 
-#   group_by(u_sigma) %>% 
-#   summarise(beta0_se_mean = mean(beta0_se), 
-#             beta0_se_min = min(beta0_se), 
-#             beta0_se_max = max(beta0_se)) %>% 
-#   ggplot() + 
-#   geom_ribbon(aes(x= u_sigma, 
-#                   ymin = beta0_se_min, 
-#                   ymax = beta0_se_max), fill="gray80") +
-#   geom_line(aes(u_sigma, beta0_se_mean)) +
-#   theme_minimal() +
-#   xlab("Varianza Errore di Misura") +
-#   ylab("Beta 0 SE") +
-#   ggtitle("Beta 0 SE") +
-#   xlim(c(0, 1))
-# 
-# betaW_se <- simulazione %>% 
-#   group_by(u_sigma) %>% 
-#   summarise(betaW_se_mean = mean(betaW_se), 
-#             betaW_se_min = min(betaW_se), 
-#             betaW_se_max = max(betaW_se)) %>% 
-#   ggplot() + 
-#   geom_ribbon(aes(x= u_sigma, 
-#                   ymin = betaW_se_min, 
-#                   ymax = betaW_se_max), fill="gray80") +
-#   geom_line(aes(u_sigma, betaW_se_mean)) +
-#   theme_minimal() +
-#   xlab("Varianza Errore di Misura") +
-#   ylab("Beta W SE") +
-#   ggtitle("Beta W SE") +
-#   xlim(c(0, 1))
-# 
-# betaZ_se <- simulazione %>% 
-#   group_by(u_sigma) %>% 
-#   summarise(betaZ_se_mean = mean(betaZ_se), 
-#             betaZ_se_min = min(betaZ_se), 
-#             betaZ_se_max = max(betaZ_se)) %>% 
-#   ggplot() + 
-#   geom_ribbon(aes(x= u_sigma, 
-#                   ymin = betaZ_se_min, 
-#                   ymax = betaZ_se_max), fill="gray80") +
-#   geom_line(aes(u_sigma, betaZ_se_mean)) +
-#   theme_minimal() +
-#   xlab("Varianza Errore di Misura") +
-#   ylab("Beta Z SE") +
-#   ggtitle("Beta Z SE") +
-#   xlim(c(0, 1))
+beta0_se <- simulazione %>%
+  group_by(u_sigma) %>%
+  summarise(beta0_se_mean = mean(beta0_se),
+            beta0_se_min = min(beta0_se),
+            beta0_se_max = max(beta0_se)) %>%
+  ggplot() +
+  geom_ribbon(aes(x= u_sigma,
+                  ymin = beta0_se_min,
+                  ymax = beta0_se_max), fill="gray80") +
+  geom_line(aes(u_sigma, beta0_se_mean)) +
+  theme_minimal() +
+  xlab("Varianza Errore di Misura") +
+  ylab("Beta 0 SE") +
+  ggtitle("Beta 0 SE") +
+  xlim(c(0, 1))
+
+betaW_se <- simulazione %>%
+  group_by(u_sigma) %>%
+  summarise(betaW_se_mean = mean(betaW_se),
+            betaW_se_min = min(betaW_se),
+            betaW_se_max = max(betaW_se)) %>%
+  ggplot() +
+  geom_ribbon(aes(x= u_sigma,
+                  ymin = betaW_se_min,
+                  ymax = betaW_se_max), fill="gray80") +
+  geom_line(aes(u_sigma, betaW_se_mean)) +
+  theme_minimal() +
+  xlab("Varianza Errore di Misura") +
+  ylab("Beta W SE") +
+  ggtitle("Beta W SE") +
+  xlim(c(0, 1))
+
+betaZ_se <- simulazione %>%
+  group_by(u_sigma) %>%
+  summarise(betaZ_se_mean = mean(betaZ_se),
+            betaZ_se_min = min(betaZ_se),
+            betaZ_se_max = max(betaZ_se)) %>%
+  ggplot() +
+  geom_ribbon(aes(x= u_sigma,
+                  ymin = betaZ_se_min,
+                  ymax = betaZ_se_max), fill="gray80") +
+  geom_line(aes(u_sigma, betaZ_se_mean)) +
+  theme_minimal() +
+  xlab("Varianza Errore di Misura") +
+  ylab("Beta Z SE") +
+  ggtitle("Beta Z SE") +
+  xlim(c(0, 1))
+
+
+beta0_se | betaW_se | betaZ_se
 
 
 # errore nelle stime per diversi quantili ---------------------------------
