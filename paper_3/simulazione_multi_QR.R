@@ -292,4 +292,4 @@ betaWq <- sim_box %>%
   ggtitle("Beta W")
 
 beta0q | betaWq | betaZq
-ggsave("figures/boxplot_err.pdf", beta0q | betaWq | betaZq, height = 4, width = 14)
+ggsave("figures/boxplot_err.pdf", beta0q | betaWq | betaZq, height = 8, width = 24)
