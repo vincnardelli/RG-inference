@@ -137,7 +137,7 @@ betaZ <- simulazione %>%
 
 
 beta0 | betaW | betaZ
-ggsave("figures/estim_RC.pdf", beta0 | betaW | betaZ, height = 8, width = 24)
+  ggsave("figures/estim_RC.pdf", beta0 | betaW | betaZ, height = 8, width = 24)
 
 # plot SE - ---------------------------------------------------
 beta0_se <- simulazione %>%
