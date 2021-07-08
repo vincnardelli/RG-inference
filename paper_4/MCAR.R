@@ -6,6 +6,7 @@ library(ggplot2)
 library(patchwork)
 
 simulazione_rq_MCAR <- function(n = 500, tt = .9, prop=0) {
+  #prova cavallo
   mu=c(3,5,1)
   vars=diag(c(2,1,1.5))
   Z = mvrnorm(n=n,mu=mu,Sigma=vars)
